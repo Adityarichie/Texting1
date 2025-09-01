@@ -1,0 +1,12 @@
+* { box-sizing: border-box; }
+body { font-family: Inter, system-ui, Arial; margin:0; padding:0; background:#0f172a; color:#e6eef8; }
+.app { max-width:900px; margin:30px auto; padding:16px; }
+.chat { background:#0b1220; border-radius:12px; padding:12px; min-height:400px; }
+.messages { max-height:380px; overflow:auto; padding:8px; }
+.message { margin:6px 0; padding:8px 12px; border-radius:12px; display:inline-block; }
+.me { background:#1f7a8c; align-self:flex-end; }
+.other { background:#1a2936; align-self:flex-start; }
+.meta { font-size:12px; opacity:0.7; margin-top:4px; }
+.input-row { display:flex; gap:8px; margin-top:12px; }
+input[type=text] { flex:1; padding:10px; border-radius:8px; border:1px solid #233241; background:#071029; color:#e6eef8; }
+button { padding:10px 14px; border-radius:8px; background:#0ea5a3; border:none; cursor:pointer; }
