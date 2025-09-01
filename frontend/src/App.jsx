@@ -3,7 +3,7 @@ import { io } from 'socket.io-client';
 
 export default function App() {
   const [nick, setNick] = useState('');
-  const [room, setRoom] = useState('main');
+  const [room, setRoom] = useState('');
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
