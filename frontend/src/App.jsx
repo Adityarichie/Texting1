@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const socket = io(import.meta.env.VITE_SERVER_URL);
 
 export default function App() {
   const [nick, setNick] = useState('');
