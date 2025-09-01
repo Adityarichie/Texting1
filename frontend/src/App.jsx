@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const socket = io(import.meta.env.VITE_SERVER_URL);
-
 export default function App() {
   const [nick, setNick] = useState('');
   const [room, setRoom] = useState('main');
@@ -30,9 +28,10 @@ export default function App() {
       alert('Enter a nickname first');
       return;
     }
-    const s = io(SERVER_URL, {
+
+    const s = io(import.meta.env.VITE_SERVER_URL, {
       transports: ['websocket'], // Force WebSocket
-      withCredentials: true, // If using cookies
+      withCredentials: true,
     });
     socketRef.current = s;
 
@@ -126,7 +125,13 @@ export default function App() {
                 </div>
               )}
               <div className="input-row">
-                <input type="text" placeholder="Type a message..." value={text} onChange={e => handleTyping(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') send(); }} />
+                <input
+                  type="text"
+                  placeholder="Type a message..."
+                  value={text}
+                  onChange={e => handleTyping(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') send(); }}
+                />
                 <button onClick={send}>Send</button>
               </div>
               <div style={{ marginTop: 8 }}>
