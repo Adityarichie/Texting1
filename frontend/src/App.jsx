@@ -95,9 +95,9 @@ export default function App() {
       {!connected ? (
         <div style={{ display: 'grid', gap: 8, maxWidth: 420 }}>
           <input placeholder="Choose a nickname" value={nick} onChange={e => setNick(e.target.value)} />
-          <input placeholder="Room name (default: main)" value={room} onChange={e => setRoom(e.target.value)} />
+          <input placeholder="Choose Room name" value={room} onChange={e => setRoom(e.target.value)} />
           <button onClick={join}>Join Room</button>
-          <p style={{ opacity: 0.8, fontSize: 13 }}>Messages are stored only while the server runs. Refresh or server restart clears them.</p>
+          <p style={{ opacity: 0.8, fontSize: 13 }}>Made by Aditya Kulkarni. Refresh or server restart clears them.</p>
         </div>
       ) : (
         <div>
