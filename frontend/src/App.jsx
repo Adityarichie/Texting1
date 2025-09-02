@@ -72,11 +72,11 @@ export default function App() {
     });
 
     s.on('user-joined', (u) => {
-      setMessages(prev => [...prev, { id: 'sys-'+Date.now(), nick: 'System', text: `${u.nick} joined the room`, ts: Date.now() }]);
+      setMessages(prev => [...prev, { id: 'sys-'+Date.now(), nick: 'System', text: `${u.nick} joined the room` }]);
     });
 
     s.on('user-left', (u) => {
-      setMessages(prev => [...prev, { id: 'sys-'+Date.now(), nick: 'System', text: `${u.nick} left the room`, ts: Date.now() }]);
+      setMessages(prev => [...prev, { id: 'sys-'+Date.now(), nick: 'System', text: `${u.nick} left the room` }]);
     });
 
     s.on('typing', ({ id, nick: tn, typing }) => {
@@ -179,53 +179,53 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-black text-pink-400">
-      <header className="p-4 bg-pink-600 text-black text-xl font-bold text-center">
+    <div className="h-screen w-screen flex flex-col bg-gray-900 text-white">
+      <header className="p-6 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-2xl font-bold text-center shadow-lg">
         Temporary Chat + Video Call
       </header>
 
       {!connected ? (
-        <div className="flex flex-col gap-4 items-center justify-center flex-1">
+        <div className="flex flex-col gap-6 items-center justify-center flex-1 p-6">
           <input
             placeholder="Choose a nickname"
-            className="p-2 rounded bg-black border border-pink-500 text-pink-400"
+            className="w-full max-w-md p-3 rounded-lg bg-gray-800 border-2 border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={nick}
-            onChange={e=>setNick(e.target.value)}
+            onChange={e => setNick(e.target.value)}
           />
           <input
             placeholder="Room name (default: main)"
-            className="p-2 rounded bg-black border border-pink-500 text-pink-400"
+            className="w-full max-w-md p-3 rounded-lg bg-gray-800 border-2 border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={room}
-            onChange={e=>setRoom(e.target.value)}
+            onChange={e => setRoom(e.target.value)}
           />
           <button
             onClick={join}
-            className="px-4 py-2 rounded bg-pink-500 text-black font-bold hover:bg-pink-400"
+            className="w-full max-w-md px-6 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
           >
             Join Room
           </button>
-          <p className="opacity-70 text-sm">Messages and calls are temporary (RAM only).</p>
+          <p className="text-gray-400 text-sm">Messages and calls are temporary (RAM only).</p>
         </div>
       ) : (
         <div className="flex flex-col flex-1">
           {/* Messages */}
-          <div ref={messagesRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div ref={messagesRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-800">
             {messages.map(m => {
               const isSys = m.nick === 'System';
               const isMe = m.id && socketRef.current && m.id.startsWith(socketRef.current.id);
               return (
                 <div
                   key={m.id}
-                  className={`p-2 rounded max-w-[70%] ${
+                  className={`p-3 rounded-lg max-w-[75%] ${
                     isSys
-                      ? 'mx-auto text-gray-400 text-sm'
+                      ? 'mx-auto text-gray-400 text-sm bg-gray-700'
                       : isMe
-                        ? 'ml-auto bg-pink-600 text-black'
-                        : 'mr-auto bg-gray-800 text-pink-300'
+                        ? 'ml-auto bg-pink-600 text-white'
+                        : 'mr-auto bg-gray-700 text-white'
                   }`}
                 >
                   {!isSys && (
-                    <strong className={`block mb-1 ${getUserColor(m.nick)}`}>
+                    <strong className={`block mb-1 ${getUserColor(m.nick)} font-medium`}>
                       {m.nick}
                     </strong>
                   )}
@@ -237,54 +237,54 @@ export default function App() {
 
           {/* Typing */}
           {Object.keys(typingUsers).length > 0 && (
-            <div className="px-4 py-1 text-sm text-pink-400 opacity-70">
+            <div className="px-6 py-2 text-sm text-pink-300 bg-gray-800 opacity-90">
               {Object.values(typingUsers).join(', ')} typing...
             </div>
           )}
 
           {/* Input */}
-          <div className="p-4 flex items-center gap-2 border-t border-pink-500 bg-black">
+          <div className="p-6 flex items-center gap-4 bg-gray-800 border-t border-pink-500">
             <input
               type="text"
               placeholder="Type a message..."
-              className="flex-1 p-2 rounded bg-gray-900 border border-pink-500 text-pink-400"
+              className="flex-1 p-3 rounded-lg bg-gray-900 border border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
               value={text}
-              onChange={e=>handleTyping(e.target.value)}
-              onKeyDown={e=>{ if (e.key === 'Enter') send(); }}
+              onChange={e => handleTyping(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') send(); }}
             />
             <button
               onClick={send}
-              className="px-4 py-2 rounded bg-pink-500 text-black font-bold hover:bg-pink-400"
+              className="px-6 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
             >
               Send
             </button>
             <button
               onClick={() => { socketRef.current && socketRef.current.disconnect(); setConnected(false); setMessages([]); }}
-              className="px-3 py-2 rounded bg-gray-700 text-pink-400 hover:bg-gray-600"
+              className="px-4 py-3 rounded-lg bg-gray-700 text-pink-300 hover:bg-gray-600 transition duration-300"
             >
               Leave
             </button>
           </div>
 
           {/* Video Call */}
-          <div className="p-4 border-t border-pink-500 bg-gray-900">
-            <h2 className="text-lg font-bold mb-2">Video Call</h2>
-            <div className="flex gap-4">
-              <video ref={localVideoRef} autoPlay muted playsInline className="w-1/2 bg-black rounded" />
-              <video ref={remoteVideoRef} autoPlay playsInline className="w-1/2 bg-black rounded" />
+          <div className="p-6 bg-gray-900 border-t border-pink-500">
+            <h2 className="text-xl font-bold mb-4 text-pink-300">Video Call</h2>
+            <div className="flex gap-6 mb-4">
+              <video ref={localVideoRef} autoPlay muted playsInline className="w-1/2 bg-black rounded-lg shadow-lg" />
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-1/2 bg-black rounded-lg shadow-lg" />
             </div>
-            <div className="mt-4">
+            <div className="text-center">
               {!inCall ? (
                 <button
                   onClick={startCall}
-                  className="px-4 py-2 rounded bg-pink-500 text-black font-bold hover:bg-pink-400"
+                  className="px-6 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
                 >
                   Start Call
                 </button>
               ) : (
                 <button
                   onClick={endCall}
-                  className="px-4 py-2 rounded bg-red-600 text-white font-bold hover:bg-red-500"
+                  className="px-6 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition duration-300"
                 >
                   End Call
                 </button>
