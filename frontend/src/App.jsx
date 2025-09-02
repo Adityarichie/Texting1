@@ -24,7 +24,7 @@ function getUserColor(nick) {
 
 export default function App() {
   const [nick, setNick] = useState('');
-  const [room, setRoom] = useState('');
+  const [room, setRoom] = useState('main');
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -179,49 +179,66 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-gray-900 text-white">
-      <header className="p-6 bg-gradient-to-r from-pink-600 to-purple-600 text-white text-2xl font-bold text-center shadow-lg">
-        Temporary Chat + Video Call
-      </header>
-
+    <div className="h-screen w-screen flex bg-gray-900 text-white overflow-hidden">
+      {/* Sidebar for Rooms */}
       {!connected ? (
-        <div className="flex flex-col gap-6 items-center justify-center flex-1 p-6">
+        <div className="w-64 bg-gray-800 p-4 flex flex-col items-center">
+          <h2 className="text-xl font-bold text-pink-300 mb-4">Join a Room</h2>
           <input
             placeholder="Choose a nickname"
-            className="w-full max-w-md p-3 rounded-lg bg-gray-800 border-2 border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
+            className="w-full p-2 mb-4 rounded-lg bg-gray-700 border border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={nick}
             onChange={e => setNick(e.target.value)}
           />
           <input
             placeholder="Room name (default: main)"
-            className="w-full max-w-md p-3 rounded-lg bg-gray-800 border-2 border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
+            className="w-full p-2 mb-4 rounded-lg bg-gray-700 border border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
             value={room}
             onChange={e => setRoom(e.target.value)}
           />
           <button
             onClick={join}
-            className="w-full max-w-md px-6 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
+            className="w-full px-4 py-2 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
           >
             Join Room
           </button>
-          <p className="text-gray-400 text-sm">Messages and calls are temporary (RAM only).</p>
+          <p className="text-gray-400 text-sm mt-2">Messages and calls are temporary (RAM only).</p>
         </div>
       ) : (
-        <div className="flex flex-col flex-1">
+        <div className="w-64 bg-gray-800 p-4 flex flex-col">
+          <h2 className="text-xl font-bold text-pink-300 mb-4">Rooms</h2>
+          <div className="flex-1 overflow-y-auto">
+            <button
+              onClick={() => { setRoom('main'); socketRef.current.emit('join-room', { roomId: 'main', nick }); }}
+              className="w-full text-left p-2 mb-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-pink-300"
+            >
+              Main
+            </button>
+            {/* Add more room buttons as needed */}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        <header className="bg-gray-800 p-4 text-xl font-bold text-pink-300 border-b border-pink-500">
+          Temporary Chat + Video Call - {connected ? room : 'Not Connected'}
+        </header>
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Messages */}
-          <div ref={messagesRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-800">
+          <div ref={messagesRef} className="flex-1 overflow-y-auto p-4 bg-gray-700">
             {messages.map(m => {
               const isSys = m.nick === 'System';
               const isMe = m.id && socketRef.current && m.id.startsWith(socketRef.current.id);
               return (
                 <div
                   key={m.id}
-                  className={`p-3 rounded-lg max-w-[75%] ${
+                  className={`p-2 rounded-lg max-w-[75%] mb-2 ${
                     isSys
-                      ? 'mx-auto text-gray-400 text-sm bg-gray-700'
+                      ? 'mx-auto text-gray-400 text-sm bg-gray-600'
                       : isMe
                         ? 'ml-auto bg-pink-600 text-white'
-                        : 'mr-auto bg-gray-700 text-white'
+                        : 'mr-auto bg-gray-600 text-white'
                   }`}
                 >
                   {!isSys && (
@@ -237,62 +254,62 @@ export default function App() {
 
           {/* Typing */}
           {Object.keys(typingUsers).length > 0 && (
-            <div className="px-6 py-2 text-sm text-pink-300 bg-gray-800 opacity-90">
+            <div className="px-4 py-2 text-sm text-pink-300 bg-gray-700 opacity-90">
               {Object.values(typingUsers).join(', ')} typing...
             </div>
           )}
 
           {/* Input */}
-          <div className="p-6 flex items-center gap-4 bg-gray-800 border-t border-pink-500">
+          <div className="p-4 bg-gray-800 border-t border-pink-500 flex items-center gap-4">
             <input
               type="text"
               placeholder="Type a message..."
-              className="flex-1 p-3 rounded-lg bg-gray-900 border border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
+              className="flex-1 p-2 rounded-lg bg-gray-900 border border-pink-500 text-pink-300 focus:outline-none focus:ring-2 focus:ring-pink-400"
               value={text}
               onChange={e => handleTyping(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') send(); }}
             />
             <button
               onClick={send}
-              className="px-6 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
+              className="px-4 py-2 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
             >
               Send
             </button>
             <button
-              onClick={() => { socketRef.current && socketRef.current.disconnect(); setConnected(false); setMessages([]); }}
-              className="px-4 py-3 rounded-lg bg-gray-700 text-pink-300 hover:bg-gray-600 transition duration-300"
+              onClick={() => { socketRef.current.disconnect(); setConnected(false); setMessages([]); }}
+              className="px-4 py-2 rounded-lg bg-gray-700 text-pink-300 hover:bg-gray-600 transition duration-300"
             >
               Leave
             </button>
           </div>
+        </div>
 
-          {/* Video Call */}
-          <div className="p-6 bg-gray-900 border-t border-pink-500">
-            <h2 className="text-xl font-bold mb-4 text-pink-300">Video Call</h2>
-            <div className="flex gap-6 mb-4">
-              <video ref={localVideoRef} autoPlay muted playsInline className="w-1/2 bg-black rounded-lg shadow-lg" />
-              <video ref={remoteVideoRef} autoPlay playsInline className="w-1/2 bg-black rounded-lg shadow-lg" />
-            </div>
-            <div className="text-center">
-              {!inCall ? (
-                <button
-                  onClick={startCall}
-                  className="px-6 py-3 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
-                >
-                  Start Call
-                </button>
-              ) : (
-                <button
-                  onClick={endCall}
-                  className="px-6 py-3 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition duration-300"
-                >
-                  End Call
-                </button>
-              )}
-            </div>
+        {/* Video Call */}
+        <div className="p-4 bg-gray-700 border-t border-pink-500">
+          <h2 className="text-lg font-bold mb-2 text-pink-300">Video Call</h2>
+          <div className="flex gap-4 mb-4">
+            <video ref={localVideoRef} autoPlay muted playsInline className="w-1/2 bg-black rounded-lg shadow-md" />
+            <video ref={remoteVideoRef} autoPlay playsInline className="w-1/2 bg-black rounded-lg shadow-md" />
+          </div>
+          <div className="text-center">
+            {!inCall ? (
+              <button
+                onClick={startCall}
+                className="px-4 py-2 rounded-lg bg-pink-500 text-white font-semibold hover:bg-pink-400 transition duration-300"
+              >
+                Start Call
+              </button>
+            ) : (
+              <button
+                onClick={endCall}
+                className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-500 transition duration-300"
+              >
+                End Call
+              </button>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
