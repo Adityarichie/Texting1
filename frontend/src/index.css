@@ -148,16 +148,19 @@ body {
   margin-bottom: 10px;
   color: #f472b6;
 }
-.videos {
+.videos-vertical {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  gap: 12px;
   width: 100%;
+  height: 70%;
 }
-.videos video {
+.videos-vertical video {
   flex: 1;
-  background: black;
+  width: 100%;
   border-radius: 12px;
-  height: 200px;
+  background: black;
+  object-fit: cover;
 }
 .call-buttons {
   margin-top: 14px;
