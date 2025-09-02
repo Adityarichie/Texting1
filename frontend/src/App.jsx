@@ -172,7 +172,7 @@ export default function App() {
     <div className="app">
       {!connected ? (
         <div className="join-screen">
-          <h1 className="title">💬 Pink Chat</h1>
+          <h1 className="title">💬 Join Chat</h1>
           <input
             placeholder="Choose a nickname"
             value={nick}
@@ -239,7 +239,7 @@ export default function App() {
 
           <div className="video-call">
             <h2>📹 Video Call</h2>
-            <div className="videos">
+            <div className="videos-vertical">
               <video ref={localVideoRef} autoPlay muted playsInline />
               <video ref={remoteVideoRef} autoPlay playsInline />
             </div>
