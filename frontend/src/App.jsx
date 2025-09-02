@@ -3,6 +3,25 @@ import { io } from 'socket.io-client';
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 
+// simple color palette for usernames
+const userColors = [
+  'text-pink-400',
+  'text-purple-400',
+  'text-indigo-400',
+  'text-blue-400',
+  'text-fuchsia-400',
+  'text-rose-400',
+];
+
+// hash function to map a username to a color
+function getUserColor(nick) {
+  let hash = 0;
+  for (let i = 0; i < nick.length; i++) {
+    hash = nick.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return userColors[Math.abs(hash) % userColors.length];
+}
+
 export default function App() {
   const [nick, setNick] = useState('');
   const [room, setRoom] = useState('');
@@ -205,9 +224,12 @@ export default function App() {
                         : 'mr-auto bg-gray-800 text-pink-300'
                   }`}
                 >
-                  {!isSys && <strong className="block mb-1">{m.nick}</strong>}
+                  {!isSys && (
+                    <strong className={`block mb-1 ${getUserColor(m.nick)}`}>
+                      {m.nick}
+                    </strong>
+                  )}
                   <div>{m.text}</div>
-                  <div className="text-xs opacity-60">{new Date(m.ts).toLocaleTimeString()}</div>
                 </div>
               );
             })}
