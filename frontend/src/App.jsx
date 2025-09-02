@@ -1,18 +1,23 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { io } from 'socket.io-client';
+import React, { useEffect, useState, useRef } from "react";
+import { io } from "socket.io-client";
 
-// Change this if your backend runs elsewhere
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
 
 export default function App() {
-  const [nick, setNick] = useState('');
-  const [room, setRoom] = useState('');
+  const [nick, setNick] = useState("");
+  const [room, setRoom] = useState("");
   const [connected, setConnected] = useState(false);
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   const [typingUsers, setTypingUsers] = useState({});
   const socketRef = useRef(null);
   const messagesRef = useRef(null);
+
+  // video call refs
+  const pcRef = useRef(null);
+  const localVideoRef = useRef(null);
+  const remoteVideoRef = useRef(null);
+  const [inCall, setInCall] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -21,7 +26,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // auto scroll when messages change
     if (messagesRef.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
     }
@@ -29,104 +33,224 @@ export default function App() {
 
   function join() {
     if (!nick.trim()) {
-      alert('Enter a nickname first');
+      alert("Enter a nickname first");
       return;
     }
     const s = io(SERVER_URL);
     socketRef.current = s;
 
-    s.on('connect', () => {
+    s.on("connect", () => {
       setConnected(true);
-      s.emit('join-room', { roomId: room, nick });
+      s.emit("join-room", { roomId: room, nick });
     });
 
-    s.on('room-history', (history) => {
+    s.on("room-history", (history) => {
       setMessages(history || []);
     });
 
-    s.on('new-message', (msg) => {
-      setMessages(prev => [...prev, msg]);
+    s.on("new-message", (msg) => {
+      setMessages((prev) => [...prev, msg]);
     });
 
-    s.on('user-joined', (u) => {
-      setMessages(prev => [...prev, { id: 'sys-'+Date.now(), nick: 'System', text: `${u.nick} joined the room`, ts: Date.now() }]);
+    s.on("user-joined", (u) => {
+      setMessages((prev) => [
+        ...prev,
+        { id: "sys-" + Date.now(), nick: "System", text: `${u.nick} joined the room` },
+      ]);
     });
 
-    s.on('user-left', (u) => {
-      setMessages(prev => [...prev, { id: 'sys-'+Date.now(), nick: 'System', text: `${u.nick} left the room`, ts: Date.now() }]);
+    s.on("user-left", (u) => {
+      setMessages((prev) => [
+        ...prev,
+        { id: "sys-" + Date.now(), nick: "System", text: `${u.nick} left the room` },
+      ]);
     });
 
-    s.on('typing', ({ id, nick: tn, typing }) => {
-      setTypingUsers(prev => {
-        const copy = {...prev};
+    s.on("typing", ({ id, nick: tn, typing }) => {
+      setTypingUsers((prev) => {
+        const copy = { ...prev };
         if (typing) copy[id] = tn;
         else delete copy[id];
         return copy;
       });
     });
+
+    // video call signaling
+    s.on("offer", async (offer) => {
+      if (!pcRef.current) createPeerConnection();
+      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer));
+      const answer = await pcRef.current.createAnswer();
+      await pcRef.current.setLocalDescription(answer);
+      s.emit("answer", answer);
+    });
+
+    s.on("answer", async (answer) => {
+      if (pcRef.current) {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(answer));
+      }
+    });
+
+    s.on("ice-candidate", async (candidate) => {
+      try {
+        if (pcRef.current) {
+          await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      } catch (err) {
+        console.error("Error adding ICE candidate:", err);
+      }
+    });
   }
 
   function send() {
     if (!text.trim() || !socketRef.current) return;
-    socketRef.current.emit('send-message', { text });
-    setText('');
-    socketRef.current.emit('typing', false);
+    socketRef.current.emit("send-message", { text });
+    setText("");
+    socketRef.current.emit("typing", false);
   }
 
   let typingTimeout = useRef(null);
   function handleTyping(val) {
     setText(val);
     if (!socketRef.current) return;
-    socketRef.current.emit('typing', true);
+    socketRef.current.emit("typing", true);
     if (typingTimeout.current) clearTimeout(typingTimeout.current);
     typingTimeout.current = setTimeout(() => {
-      socketRef.current.emit('typing', false);
+      socketRef.current.emit("typing", false);
     }, 800);
+  }
+
+  // ===== VIDEO CALL =====
+  function createPeerConnection() {
+    pcRef.current = new RTCPeerConnection({
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+    });
+
+    pcRef.current.onicecandidate = (event) => {
+      if (event.candidate) {
+        socketRef.current.emit("ice-candidate", event.candidate);
+      }
+    };
+
+    pcRef.current.ontrack = (event) => {
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+      }
+    };
+  }
+
+  async function startCall() {
+    if (!socketRef.current) return;
+    createPeerConnection();
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: true,
+    });
+    stream.getTracks().forEach((track) => pcRef.current.addTrack(track, stream));
+    if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+
+    const offer = await pcRef.current.createOffer();
+    await pcRef.current.setLocalDescription(offer);
+    socketRef.current.emit("offer", offer);
+    setInCall(true);
+  }
+
+  function endCall() {
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    if (localVideoRef.current && localVideoRef.current.srcObject) {
+      localVideoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+    setInCall(false);
   }
 
   return (
     <div className="app">
-      <h1>Temporary Chat — No database (messages in RAM)</h1>
-
       {!connected ? (
-        <div style={{display:'grid', gap:8, maxWidth:420}}>
-          <input placeholder="Choose a nickname" value={nick} onChange={e=>setNick(e.target.value)} />
-          <input placeholder="Room name (default: main)" value={room} onChange={e=>setRoom(e.target.value)} />
+        <div className="join-screen">
+          <h1 className="title">💬 Pink Chat</h1>
+          <input
+            placeholder="Choose a nickname"
+            value={nick}
+            onChange={(e) => setNick(e.target.value)}
+          />
+          <input
+            placeholder="Room name (default: main)"
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
+          />
           <button onClick={join}>Join Room</button>
-          <p style={{opacity:0.8, fontSize:13}}>Messages are stored only while the server runs. Refresh or server restart clears them.</p>
+          <p className="note">Messages and calls are temporary (RAM only).</p>
         </div>
       ) : (
-        <div>
-          <div className="chat">
-            <div className="messages" ref={messagesRef} style={{display:'flex',flexDirection:'column'}}>
-              {messages.map(m => {
-                const isSys = m.nick === 'System';
-                const isMe = m.id && socketRef.current && m.id.startsWith(socketRef.current.id);
+        <div className="chat-layout">
+          <div className="chat-window">
+            <div className="messages" ref={messagesRef}>
+              {messages.map((m) => {
+                const isSys = m.nick === "System";
+                const isMe =
+                  m.id && socketRef.current && m.id.startsWith(socketRef.current.id);
+
                 return (
-                  <div key={m.id} style={{display:'flex', flexDirection:'column', alignItems: isSys ? 'center' : (isMe ? 'flex-end' : 'flex-start')}}>
-                    <div className={'message ' + (isSys ? '' : (isMe ? 'me' : 'other'))} style={{maxWidth:'80%'}}>
-                      <strong style={{display:'block', marginBottom:6}}>{isSys ? '' : m.nick}</strong>
-                      <div>{m.text}</div>
-                      <div className="meta">{new Date(m.ts).toLocaleTimeString()}</div>
-                    </div>
+                  <div
+                    key={m.id}
+                    className={`message ${isSys ? "system" : isMe ? "me" : "other"}`}
+                  >
+                    {!isSys && <strong>{m.nick}</strong>}
+                    <div>{m.text}</div>
                   </div>
                 );
               })}
             </div>
 
-            <div style={{marginTop:8}}>
-              {Object.keys(typingUsers).length > 0 && (
-                <div style={{fontSize:13, opacity:0.8, marginBottom:6}}>
-                  {Object.values(typingUsers).join(', ')} typing...
-                </div>
+            {Object.keys(typingUsers).length > 0 && (
+              <div className="typing">
+                {Object.values(typingUsers).join(", ")} typing...
+              </div>
+            )}
+
+            <div className="input-row">
+              <input
+                type="text"
+                placeholder="Type a message..."
+                value={text}
+                onChange={(e) => handleTyping(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") send();
+                }}
+              />
+              <button onClick={send}>Send</button>
+              <button
+                className="leave"
+                onClick={() => {
+                  socketRef.current && socketRef.current.disconnect();
+                  setConnected(false);
+                  setMessages([]);
+                }}
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+
+          <div className="video-call">
+            <h2>📹 Video Call</h2>
+            <div className="videos">
+              <video ref={localVideoRef} autoPlay muted playsInline />
+              <video ref={remoteVideoRef} autoPlay playsInline />
+            </div>
+            <div className="call-buttons">
+              {!inCall ? (
+                <button onClick={startCall}>Start Call</button>
+              ) : (
+                <button className="end" onClick={endCall}>
+                  End Call
+                </button>
               )}
-              <div className="input-row">
-                <input type="text" placeholder="Type a message..." value={text} onChange={e=>handleTyping(e.target.value)} onKeyDown={e=>{ if (e.key === 'Enter') send(); }} />
-                <button onClick={send}>Send</button>
-              </div>
-              <div style={{marginTop:8}}>
-                <button onClick={() => { socketRef.current && socketRef.current.disconnect(); setConnected(false); setMessages([]); }}>Leave Room</button>
-              </div>
             </div>
           </div>
         </div>
